@@ -1,7 +1,3 @@
-<p align="center" style="width: 100%">
-  <img src="assets/fed-sb-logo.jpg" alt="Project Logo" height="5%">
-</p>
-
 # Fed-SB: A Silver Bullet for Extreme Communication Efficiency and Performance in (Private) Federated LoRA Fine-Tuning
 
 
