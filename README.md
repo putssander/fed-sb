@@ -76,3 +76,26 @@ There are two scenarios for privacy-preserving fine-tuning:
 In both cases, you can adjust the `epsilon` parameter as needed to tune the level of privacy.
 
 ---
+
+## Citation
+
+If you use our work, please cite us:
+
+```
+@article{ponkshe2024initialization,
+  title={Initialization using update approximation is a silver bullet for extremely efficient low-rank fine-tuning},
+  author={Ponkshe, Kaustubh and Singhal, Raghav and Gorbunov, Eduard and Tumanov, Alexey and Horvath, Samuel and Vepakomma, Praneeth},
+  journal={arXiv preprint arXiv:2411.19557},
+  year={2024}
+}
+
+@misc{singhal2025fedexloraexactaggregationfederated,
+      title={FedEx-LoRA: Exact Aggregation for Federated and Efficient Fine-Tuning of Foundation Models}, 
+      author={Raghav Singhal and Kaustubh Ponkshe and Praneeth Vepakomma},
+      year={2025},
+      eprint={2410.09432},
+      archivePrefix={arXiv},
+      primaryClass={cs.DC},
+      url={https://arxiv.org/abs/2410.09432}, 
+}
+```
