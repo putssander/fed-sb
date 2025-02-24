@@ -82,6 +82,16 @@ In both cases, you can adjust the `epsilon` parameter as needed to tune the leve
 If you use our work, please cite us:
 
 ```
+@misc{singhal2025fedsbsilverbulletextreme,
+      title={Fed-SB: A Silver Bullet for Extreme Communication Efficiency and Performance in (Private) Federated LoRA Fine-Tuning}, 
+      author={Raghav Singhal and Kaustubh Ponkshe and Rohit Vartak and Lav R. Varshney and Praneeth Vepakomma},
+      year={2025},
+      eprint={2502.15436},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2502.15436}, 
+}
+
 @article{ponkshe2024initialization,
   title={Initialization using update approximation is a silver bullet for extremely efficient low-rank fine-tuning},
   author={Ponkshe, Kaustubh and Singhal, Raghav and Gorbunov, Eduard and Tumanov, Alexey and Horvath, Samuel and Vepakomma, Praneeth},
