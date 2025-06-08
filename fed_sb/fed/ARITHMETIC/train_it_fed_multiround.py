@@ -152,80 +152,111 @@ def finetune():
         
         if named_grads is not None:
             del named_grads
-        for i in range(args.num_clients):
-            # Create client dataset
-            client_dataset = train_dataset.select(range(i*len(train_dataset)//args.num_clients, 
-                                                    (i+1)*len(train_dataset)//args.num_clients))
 
-            data_module = dict(train_dataset=client_dataset, data_collator=data_collator)
+        client_model_dicts = []
+        for round in range(args.rounds):
 
+            for i in range(args.num_clients):
+                # Create client dataset
+                client_dataset = train_dataset.select(range(i*len(train_dataset)//args.num_clients, 
+                                                        (i+1)*len(train_dataset)//args.num_clients))
+
+                data_module = dict(train_dataset=client_dataset, data_collator=data_collator)
+
+                
+                if args.agg_type == "ffa":
+                    client_model, lora_config = create_peft_FFA_model_it(model, args)
+                else:
+                    client_model,lora_config = create_peft_model_it(model, args)
+                
+                adapter_name = "default"
+                
+                peft_config_dict = {adapter_name: lora_config}
+                find_and_initialize_grad(
+                    model=client_model,
+                    peft_config=peft_config_dict,
+                    adapter_name=adapter_name,
+                    reconstr_type='svd',
+                    reconstruct_config=reconstr_config,
+                    writer=None,
+                    named_grads=named_grads_new,
+                )
+                if round > 0:
+                    client_state_dict = client_model.state_dict()
+                    for key in client_state_dict.keys():
+                        if("lora_latent" in key):
+                            client_state_dict[key] = aggregated_R_dict[key]
+                    client_model.load_state_dict(client_state_dict)
+                
+                for param in client_model.parameters():
+                    param.data = param.data.contiguous()
+                optimizer = AdamW(client_model.parameters(), lr=args.lr)
+
+
+                # Training arguments
+                training_args = TrainingArguments(
+                    output_dir=os.path.join(run_dir, "checkpoints"),
+                    num_train_epochs=args.epochs,
+                    per_device_train_batch_size=args.batch_size,
+                    learning_rate=args.lr,
+                    weight_decay=0,
+                    warmup_ratio=args.warmup_ratio,
+                    lr_scheduler_type=args.scheduler,
+                    seed=args.seed,
+                    report_to="wandb",
+                    gradient_accumulation_steps=32,
+                    save_strategy="no",
+                    bf16=True,
+                    tf32=False,
+                    fp16=False,
+                    logging_steps=1,
+                    logging_first_step=True,
+                    logging_dir=os.path.join(run_dir, "logs")
+                )
+
+                # Save training arguments
+                training_args_path = os.path.join(run_dir, "training_args.json")
+                with open(training_args_path, 'w') as f:
+                    json.dump(training_args.to_dict(), f, indent=4)
+
+                # Create trainers
+                trainer = Trainer(
+                    model=client_model,
+                    args=training_args,
+                    **data_module,
+                    optimizers=(optimizer, None),
+                )
             
-            if args.agg_type == "ffa":
-                client_model, lora_config = create_peft_FFA_model_it(model, args)
-            else:
-                client_model,lora_config = create_peft_model_it(model, args)
-            
-            adapter_name = "default"
-            
-            peft_config_dict = {adapter_name: lora_config}
-            find_and_initialize_grad(
-                model=client_model,
-                peft_config=peft_config_dict,
-                adapter_name=adapter_name,
-                reconstr_type='svd',
-                reconstruct_config=reconstr_config,
-                writer=None,
-                named_grads=named_grads_new,
-            )
-            for param in client_model.parameters():
-                param.data = param.data.contiguous()
-            optimizer = AdamW(client_model.parameters(), lr=args.lr)
+                # Save tokenizer
+                tokenizer.save_pretrained(os.path.join(run_dir, "tokenizer"))
+
+                client_model.config.use_cache = False
+                trainer.train()
+
+                final_model_path = os.path.join(run_dir, f"final_model_{i}")  # Fixed path naming
+                trainer.save_state()
+
+                # Store only LoRA weights from client model state dict
+                lora_dict = {k: v for k, v in client_model.state_dict().items() if "lora_latent" in k}
+                # Move lora_dict to CPU before appending
+                lora_dict = {k: v.cpu() for k, v in lora_dict.items()}
+                client_model_dicts.append(lora_dict)
+
+        # Aggregate client model LoRA weights
+            aggregated_R_dict = {}
+            for k in client_model_dicts[0].keys():
+                aggregated_R_dict[k] = torch.stack([client_model_dicts[i][k] for i in range(len(client_model_dicts))], 0).mean(0)
 
 
-            # Training arguments
-            training_args = TrainingArguments(
-                output_dir=os.path.join(run_dir, "checkpoints"),
-                num_train_epochs=args.epochs,
-                per_device_train_batch_size=args.batch_size,
-                learning_rate=args.lr,
-                weight_decay=0,
-                warmup_ratio=args.warmup_ratio,
-                lr_scheduler_type=args.scheduler,
-                seed=args.seed,
-                report_to="wandb",
-                gradient_accumulation_steps=32,
-                save_strategy="no",
-                bf16=True,
-                tf32=False,
-                fp16=False,
-                logging_steps=1,
-                logging_first_step=True,
-                logging_dir=os.path.join(run_dir, "logs")
-            )
+        client_state_dict = client_model.state_dict()
+        for key in client_state_dict.keys():
+            if("lora_latent" in key):
+                client_state_dict[key] = aggregated_R_dict[key]
+        client_model.load_state_dict(client_state_dict)
 
-            # Save training arguments
-            training_args_path = os.path.join(run_dir, "training_args.json")
-            with open(training_args_path, 'w') as f:
-                json.dump(training_args.to_dict(), f, indent=4)
-
-            # Create trainers
-            trainer = Trainer(
-                model=client_model,
-                args=training_args,
-                **data_module,
-                optimizers=(optimizer, None),
-            )
-        
-            # Save tokenizer
-            tokenizer.save_pretrained(os.path.join(run_dir, "tokenizer"))
-
-            client_model.config.use_cache = False
-            trainer.train()
-
-            final_model_path = os.path.join(run_dir, f"final_model_{i}")  # Fixed path naming
-            trainer.save_state()
-            client_model.save_pretrained(final_model_path)
-            print(f"Saved model {i} to {final_model_path}")
+        # Save aggregated model
+        final_model_path = os.path.join(run_dir, "final_model_0")
+        client_model.save_pretrained(final_model_path)
 
         return run_dir
 
@@ -317,7 +348,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda", help="Device (cuda/cpu)")
     parser.add_argument("--num_samples", type=int, default=50, help="Number of samples for gradient estimation")
     parser.add_argument("--agg_type", type=str, default="fed-sb", help="Aggregation type")
-    parser.add_argument("--num_clients", type=int, default=25, help="Number of clients")
+    parser.add_argument("--num_clients", type=int, default=3, help="Number of clients")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds")
     
     args = parser.parse_args()

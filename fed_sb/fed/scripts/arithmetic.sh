@@ -2,8 +2,7 @@
 
 # Define experiment configurations
 declare -A EXPERIMENTS=(
-    ["01-a"]="--lora_r 200 --method fed-sb"
-
+    ["01-a"]="--lora_r 200"
 )
 
 # Configuration
@@ -58,7 +57,7 @@ run_experiment() {
         --model $BASE_MODEL \
         $exp_args \
         --data_path meta-math/MetaMathQA \
-        --dataset_split "train[:5000]" \
+        --dataset_split "train[:20000]" \
         --dataset_field query response \
         --batch_size 1 \
         --eg_bs 3 \
@@ -67,8 +66,8 @@ run_experiment() {
         --max_seq_length 512 \
         --seed 42 \
         --num_samples 50 \
-        --device cuda \
-        --agg_type  $method 
+        --agg_type $method \
+        --device cuda 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt" || handle_error "$exp_name" "Training"
     
     # Debug: List directories manually
     echo "==================="
@@ -95,7 +94,7 @@ run_experiment() {
     CUDA_VISIBLE_DEVICES=$GPU_ID python fed/aggregator.py \
         --model_name "$BASE_MODEL" \
         --lora_r $current_lora_r \
-        --agg_type  $method  \
+        --agg_type $method \
         --max_seq_length 512 \
         --dir_path "$RUN_DIR" 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt" || handle_error "$exp_name" "Merging"
 

@@ -55,7 +55,7 @@ run_experiment() {
     
     # Training
     echo "[$(date)] Starting Training..." | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    CUDA_VISIBLE_DEVICES=$GPU_ID python fed/ARITHMETIC/train_it_fed.py \
+    CUDA_VISIBLE_DEVICES=$GPU_ID python fed/ARITHMETIC/train_it_fed_multiround.py \
         --model $BASE_MODEL \
         $exp_args \
         --data_path meta-math/MetaMathQA \
