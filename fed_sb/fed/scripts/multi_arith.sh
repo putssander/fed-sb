@@ -8,10 +8,11 @@ declare -A EXPERIMENTS=(
 
 # Configuration
 BASE_MODEL="google/gemma-2-9b"
-GPU_ID=0
+GPU_ID=1
 LORA_R=$(echo "${EXPERIMENTS[@]}" | grep -o 'lora_r [^ ]*' | cut -d' ' -f2 | sort -u)
 echo "Unique lora_r values: $LORA_R"
 BASE_DIR="experiments/instruction_tuning" 
+ROUNDS = 2
 
 
 if [ -d "$BASE_DIR" ]; then
@@ -58,7 +59,7 @@ run_experiment() {
         --model $BASE_MODEL \
         $exp_args \
         --data_path meta-math/MetaMathQA \
-        --dataset_split "train[:5000]" \
+        --dataset_split "train[:50]" \
         --dataset_field query response \
         --batch_size 1 \
         --eg_bs 3 \
@@ -66,9 +67,10 @@ run_experiment() {
         --warmup_ratio 0.02 \
         --max_seq_length 512 \
         --seed 42 \
-        --num_samples 50 \
+        --num_samples 5 \
         --device cuda \
-        --agg_type  $method 
+        --agg_type  $method \
+        --rounds 2
     
     # Debug: List directories manually
     echo "==================="

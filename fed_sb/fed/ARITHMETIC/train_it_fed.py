@@ -182,7 +182,12 @@ def finetune():
                     named_grads=named_grads_new,
                 )
                 if round > 0:
-                    client_model.load_state_dict(aggregated_R_dict)
+                    client_state_dict = client_model.state_dict()
+                    for key in client_state_dict.keys():
+                        if("lora_latent" in key):
+                            client_state_dict[key] = aggregated_R_dict[key]
+                    client_model.load_state_dict(client_state_dict)
+                
                 for param in client_model.parameters():
                     param.data = param.data.contiguous()
                 optimizer = AdamW(client_model.parameters(), lr=args.lr)
@@ -242,9 +247,15 @@ def finetune():
             for k in client_model_dicts[0].keys():
                 aggregated_R_dict[k] = torch.stack([client_model_dicts[i][k] for i in range(len(client_model_dicts))], 0).mean(0)
 
-        client_model.load_state_dict(aggregated_R_dict)
+
+        client_state_dict = client_model.state_dict()
+        for key in client_state_dict.keys():
+            if("lora_latent" in key):
+                client_state_dict[key] = aggregated_R_dict[key]
+        client_model.load_state_dict(client_state_dict)
 
         # Save aggregated model
+        final_model_path = os.path.join(run_dir, "final_model_0")
         client_model.save_pretrained(final_model_path)
 
         return run_dir
@@ -337,7 +348,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda", help="Device (cuda/cpu)")
     parser.add_argument("--num_samples", type=int, default=50, help="Number of samples for gradient estimation")
     parser.add_argument("--agg_type", type=str, default="fed-sb", help="Aggregation type")
-    parser.add_argument("--num_clients", type=int, default=25, help="Number of clients")
+    parser.add_argument("--num_clients", type=int, default=3, help="Number of clients")
     parser.add_argument("--rounds", type=int, default=1, help="Number of rounds")
     
     args = parser.parse_args()
