@@ -31,7 +31,7 @@ from fed_sb.utils.merge_adapter_to_base_model import *
 from fed_sb.fed.fed_data_utils import *
 from fed_sb.fed.fed_agg import *
 from fed_sb.fed.fed_utils import *
-from fed_sb.train_eval import *
+
 from fed_sb.utils.data_utils import *
 from fed_sb.models import *
 from fed_sb.utils.initialization_utils import *
