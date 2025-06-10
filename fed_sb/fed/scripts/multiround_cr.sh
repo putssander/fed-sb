@@ -2,17 +2,15 @@
 
 # Define experiment configurations
 declare -A EXPERIMENTS=(
-    ["01-a"]="--lora_r 200 --method fed-sb"
-
+    ["01-a"]="--lora_r 200"
 )
 
 # Configuration
-BASE_MODEL="google/gemma-2-9b"
-GPU_ID=1
+BASE_MODEL="meta-llama/Llama-3.2-3B"
+GPU_ID=0
 LORA_R=$(echo "${EXPERIMENTS[@]}" | grep -o 'lora_r [^ ]*' | cut -d' ' -f2 | sort -u)
 echo "Unique lora_r values: $LORA_R"
 BASE_DIR="experiments/instruction_tuning" 
-ROUNDS = 1
 
 
 if [ -d "$BASE_DIR" ]; then
@@ -26,6 +24,7 @@ LOG_DIR="experiment_logs"
 
 # Create log directory
 mkdir -p "$LOG_DIR"
+
 
 # Function to handle errors
 handle_error() {
@@ -55,23 +54,20 @@ run_experiment() {
     
     # Training
     echo "[$(date)] Starting Training..." | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    CUDA_VISIBLE_DEVICES=$GPU_ID python fed/ARITHMETIC/train_it_fed_multiround.py \
+    CUDA_VISIBLE_DEVICES=$GPU_ID python fed/CR/multiround_train_cr_fed.py \
         --model $BASE_MODEL \
         $exp_args \
-        --data_path meta-math/MetaMathQA \
-        --dataset_split "train[:5000]" \
-        --dataset_field query response \
-        --batch_size 1 \
-        --eg_bs 3 \
-        --scheduler cosine \
+        --eg_bs 10 \
+        --scheduler linear \
         --warmup_ratio 0.02 \
-        --max_seq_length 512 \
+        --max_seq_length 256 \
         --seed 42 \
-        --num_samples 50 \
-        --device cuda \
-        --agg_type  $method \
-        --rounds 2
+        --num_samples 170 \
+        --agg_type $method \
+        --rounds 2 \
+        --device cuda 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt" || handle_error "$exp_name" "Training"
     
+
     # Debug: List directories manually
     echo "==================="
     echo "Directories found:"
@@ -91,33 +87,41 @@ run_experiment() {
     
     # Paths
     local MERGED_MODEL_PATH="$RUN_DIR/merged_model"
-
-    # Merging using the experiment-specific lora_r value
+    
+    
+    # Merging
     echo "[$(date)] Starting Aggregation.." | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    CUDA_VISIBLE_DEVICES=$GPU_ID python fed/aggregator.py \
+     CUDA_VISIBLE_DEVICES=$GPU_ID python fed/aggregator.py \
         --model_name "$BASE_MODEL" \
         --lora_r $current_lora_r \
-        --agg_type  $method  \
-        --max_seq_length 512 \
+        --agg_type $method \
+        --max_seq_length 256 \
         --dir_path "$RUN_DIR" 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt" || handle_error "$exp_name" "Merging"
 
-    # Evaluation
-    echo "[$(date)] Starting GSM8K Evaluation..." | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    CUDA_VISIBLE_DEVICES=$GPU_ID python instruction_tuning_eval/gsm8k_eval.py \
-        --model "$MERGED_MODEL_PATH" \
-        --data_file "data/math_eval/gsm8k_test.jsonl" \
-        --batch_size 64 \
-        --tensor_parallel_size 1 \
-        --run_dir "$RUN_DIR" 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    
-    # Evaluation
-    echo "[$(date)] Starting MATH Evaluation..." | tee -a "$LOG_DIR/${exp_name}_log.txt"
-    CUDA_VISIBLE_DEVICES=$GPU_ID python instruction_tuning_eval/MATH_eval.py \
-        --model "$MERGED_MODEL_PATH" \
-        --data_file "data/math_eval/MATH_test.jsonl" \
-        --batch_size 64 \
-        --tensor_parallel_size 1 \
-        --run_dir "$RUN_DIR" 2>&1 | tee -a "$LOG_DIR/${exp_name}_log.txt"
+    declare -a datasets=(
+        "ARC-Challenge"
+        "ARC-Easy"
+        "boolq"
+        "hellaswag"
+        "openbookqa"
+        "piqa"
+        "social_i_qa"
+        "winogrande"
+    )
+
+    # Loop through datasets and evaluate
+    for dataset in "${datasets[@]}"; do
+        echo "=== Evaluating on $dataset ==="
+        
+        
+        CUDA_VISIBLE_DEVICES=$GPU_ID python instruction_tuning_eval/commonsense_eval.py \
+            --model "$MERGED_MODEL_PATH" \
+            --dataset "$dataset" \
+            --data_file "data/commonsense/$dataset/test.json" \
+            --batch_size 64 \
+            --tensor_parallel_size 1 \
+            --run_dir "$RUN_DIR"
+    done
     
     # Cleanup
     if [ -d "$MERGED_MODEL_PATH" ]; then
@@ -149,7 +153,7 @@ echo "=== Starting Experimental Pipeline ===" | tee -a "$LOG_DIR/main_log.txt"
 echo "Total experiments to run: ${#EXPERIMENTS[@]}" | tee -a "$LOG_DIR/main_log.txt"
 
 # Run all experiments
-for exp_name in $(echo "${!EXPERIMENTS[@]}" | tr ' ' '\n' | sort -n); do
+for exp_name in $(echo "${!EXPERIMENTS[@]}" | tr ' ' '\n' | sort); do
     run_experiment "$exp_name" "${EXPERIMENTS[$exp_name]}"
 done
 
