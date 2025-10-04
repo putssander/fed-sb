@@ -95,10 +95,10 @@ If you use our work, please cite us:
   year={2024}
 }
 
-@article{ponkshe2024initialization,
-  title={Initialization using update approximation is a silver bullet for extremely efficient low-rank fine-tuning},
-  author={Ponkshe, Kaustubh and Singhal, Raghav and Gorbunov, Eduard and Tumanov, Alexey and Horvath, Samuel and Vepakomma, Praneeth},
-  journal={arXiv preprint arXiv:2411.19557},
+@article{singhal2024fedex,
+  title={Fedex-lora: Exact aggregation for federated and efficient fine-tuning of foundation models},
+  author={Singhal, Raghav and Ponkshe, Kaustubh and Vepakomma, Praneeth},
+  journal={arXiv preprint arXiv:2410.09432},
   year={2024}
 }
 ```
