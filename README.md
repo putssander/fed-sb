@@ -110,7 +110,13 @@ This script fine-tunes a model on the Commonsense170K dataset and evaluates it a
 
 ### Dataset Preparation
 
-Download the SNLI dataset from [this link](https://nlp.stanford.edu/projects/snli/snli_1.0.zip), unzip it, and store the contents in the `DP/SNLI/data` directory.
+Download and set up the SNLI dataset automatically:
+
+```bash
+bash DP/SNLI/scripts/download_snli.sh
+```
+
+Alternatively, download manually from [this link](https://nlp.stanford.edu/projects/snli/snli_1.0.zip), unzip it, and store the contents in the `DP/SNLI/data` directory.
 
 ### Running the Experiments
 

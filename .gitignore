@@ -5,3 +5,4 @@ fed_sb/data/
 .venv
 *.pyc
 *.egg*
+fed_sb/DP/SNLI/data/snli_1.0/
