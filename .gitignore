@@ -1,3 +1,7 @@
 fed_sb/wandb
 fed_sb/experiments
 fed_sb/experiment_logs
+fed_sb/data/
+.venv
+*.pyc
+*.egg*

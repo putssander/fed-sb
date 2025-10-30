@@ -8,7 +8,25 @@ Low-Rank Adaptation (LoRA) has become ubiquitous for efficiently fine-tuning fou
 
 ## Environment Setup
 
-First, create and activate a Conda environment with Python 3.10, then install the necessary libraries by running:
+First, create and activate a virtual environment with Python 3.10, then install the necessary libraries.
+
+ERROR: Could not find a version that satisfies the requirement pyairports==2.1.1 (from versions: 0.0.1)
+ERROR: No matching distribution found for pyairports==2.1.1
+
+**Installing Python 3.10 (if not already installed):**
+
+```bash
+# Add deadsnakes PPA for older Python versions
+sudo apt update
+sudo apt install software-properties-common -y
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+
+# Install Python 3.10
+sudo apt install python3.10 python3.10-venv python3.10-dev -y
+```
+
+**Using Conda:**
 
 ```bash
 conda create -n fed-sb python=3.10
@@ -18,9 +36,49 @@ pip install -e .
 cd fed_sb
 ```
 
+**Using venv:**
+
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+cd fed_sb
+```
+
+*Note: Make sure Python 3.10 is installed on your system before using venv.*
+
+### Hugging Face Authentication
+
+Many models used in this project (e.g., Gemma, Llama) are gated and require authentication:
+
+1. **Create a Hugging Face account** (if you don't have one):  
+   Visit [https://huggingface.co/join](https://huggingface.co/join)
+
+2. **Request access to gated models**:
+   - For Gemma models: [https://huggingface.co/google/gemma-2-9b](https://huggingface.co/google/gemma-2-9b)
+   - For Llama models: [https://huggingface.co/meta-llama](https://huggingface.co/meta-llama)
+   - Click "Request Access" and wait for approval (usually instant)
+
+3. **Generate an access token**:
+   - Go to [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+   - Click "New token" and create a token with "Read" permissions
+   - Copy the token
+
+4. **Login with your token**:
+   ```bash
+   huggingface-cli login
+   ```
+   Paste your token when prompted, or set it as an environment variable:
+   ```bash
+   export HF_TOKEN="your_token_here"
+   huggingface-cli login --token $HF_TOKEN
+   ```
+
 ## Arithmetic Reasoning
 
 To fine-tune a model on the MetaMathQA dataset and evaluate its performance on GSM8K and MATH benchmarks, execute the following script:
+
 
 ```bash
 bash fed/scripts/arithmetic.sh

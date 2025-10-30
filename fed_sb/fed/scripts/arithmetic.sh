@@ -1,12 +1,38 @@
 #!/bin/bash
 
+# Parse command-line arguments
+USE_WANDB=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --wandb)
+            USE_WANDB=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--wandb]"
+            exit 1
+            ;;
+    esac
+done
+
+# Configure wandb
+if [ "$USE_WANDB" = false ]; then
+    export WANDB_MODE=disabled
+    echo "wandb is disabled. Use --wandb flag to enable."
+else
+    echo "wandb is enabled."
+fi
+
 # Define experiment configurations
 declare -A EXPERIMENTS=(
-    ["01-a"]="--lora_r 200"
+    ["01-a"]="--lora_r 200 --method fed-sb"
 )
 
 # Configuration
 BASE_MODEL="google/gemma-2-9b"
+# BASE_MODEL="google/medgemma-4b-it" --> type `gemma3` but Transformers does not recognize this architecture.
+BASE_MODEL="mistralai/Mistral-7B-v0.1"
 GPU_ID=0
 LORA_R=$(echo "${EXPERIMENTS[@]}" | grep -o 'lora_r [^ ]*' | cut -d' ' -f2 | sort -u)
 echo "Unique lora_r values: $LORA_R"
